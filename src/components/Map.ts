@@ -64,6 +64,13 @@ import type { CountryClickPayload } from './DeckGLMap';
 import { t } from '@/services/i18n';
 import type { ScenarioVisualState } from '@/config/scenario-templates';
 import { setTrustedHtml, trustedHtml } from '@/utils/dom-utils';
+import {
+  createCountryClickGestureTracker,
+  finishCountryClickGesture,
+  shouldSuppressCountryClick,
+  startCountryClickGesture,
+  updateCountryClickGestureDrag,
+} from './map-interaction-guard';
 
 
 export type TimeRange = '1h' | '6h' | '24h' | '48h' | '7d' | 'all';
@@ -739,6 +746,7 @@ export class MapComponent {
     let lastPos = { x: 0, y: 0 };
     let lastTouchDist = 0;
     let lastTouchCenter = { x: 0, y: 0 };
+    const countryClickGesture = createCountryClickGestureTracker();
     const shouldIgnoreInteractionStart = (target: EventTarget | null): boolean => {
       if (!(target instanceof Element)) return false;
       return Boolean(
@@ -783,6 +791,7 @@ export class MapComponent {
       if (e.button === 0) { // Left click
         isDragging = true;
         lastPos = { x: e.clientX, y: e.clientY };
+        startCountryClickGesture(countryClickGesture, { x: e.clientX, y: e.clientY });
         this.container.style.cursor = 'grabbing';
       }
     });
@@ -792,6 +801,7 @@ export class MapComponent {
 
       const dx = e.clientX - lastPos.x;
       const dy = e.clientY - lastPos.y;
+      updateCountryClickGestureDrag(countryClickGesture, { x: e.clientX, y: e.clientY });
 
       const panSpeed = 1 / this.state.zoom;
       this.state.pan.x += dx * panSpeed;
@@ -804,6 +814,7 @@ export class MapComponent {
     document.addEventListener('mouseup', () => {
       if (isDragging) {
         isDragging = false;
+        finishCountryClickGesture(countryClickGesture);
         this.container.style.cursor = 'grab';
       }
     });
@@ -925,6 +936,7 @@ export class MapComponent {
     this.container.addEventListener('click', (e) => {
       if (!this.onCountryClick) return;
       if (performance.now() - lastDragEndTime < 300) return;
+      if (shouldSuppressCountryClick(countryClickGesture)) return;
       const containerRect = this.container.getBoundingClientRect();
       const zoom = this.state.zoom;
       const width = this.container.clientWidth;
