@@ -6,7 +6,7 @@
  *
  * Returns text/event-stream SSE:
  *   data: {"meta":{"sources":["Brief","Risk",...],"degraded":false}}  — always first event
- *   data: {"action":{"type":"suggest-widget","label":"...","prefill":"..."}}  — optional, visual queries only
+ *   data: {"action":{"type":"open_panel"|"set_view"|"...","label":"..."}}  — optional, schema-validated in-app actions
  *   data: {"delta":"..."}    — one per content token
  *   data: {"done":true}      — terminal event
  *   data: {"error":"..."}    — on auth/llm failure
@@ -158,7 +158,7 @@ export default async function handler(req: Request): Promise<Response> {
 
   // Always prepend a meta event so the client knows which sources are live
   // and whether context is degraded — before the first token arrives.
-  // Optionally follows with an action event for visual/chart queries.
+  // Optionally follows with schema-validated action events for in-app analyst affordances.
   const stream = prependSseEvents(
     [
       { meta: { sources: context.activeSources, degraded: context.degraded } },
